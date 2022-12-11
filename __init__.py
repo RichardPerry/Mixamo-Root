@@ -125,7 +125,7 @@ class MIXAMOCONV_VIEW_3D_PT_mixamoroot(bpy.types.Panel):
         box = layout.box()
         # Options for how to do the conversion
         row = box.row()
-        row.prop(scene.mixamo, "rename_components", toggle =False)
+        row.prop(scene.mixamo, "rename_components", toggle=True)
         row = box.row()
         box.prop(scene.mixamo, "hip_name")
         row = box.row()

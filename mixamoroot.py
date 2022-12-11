@@ -117,9 +117,15 @@ def copyHips(root_bone_name="RootMotion", hip_bone_name="mixamorig:Hips"):
     bpy.context.area.ui_type = 'VIEW_3D'
 
     
-def deleteArmature():
-    bpy.ops.object.mode_set(mode='OBJECT')
-    bpy.ops.object.select_all(action="SELECT")
+def deleteArmature(imported_objects=set()):
+    if imported_objects == set():
+        log.warning("No armature imported, nothing to delete")
+    else:
+        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.select_all(action='DESELECT')
+        for object in imported_objects:
+            bpy.data.objects[object.name].select_set(True)
+        
     bpy.ops.object.delete(use_global=False, confirm=False)
 
 def import_armature(path):
@@ -144,9 +150,11 @@ def get_all_anims(source_dir, root_bone_name="RootMotion", hip_bone_name="mixamo
     files = os.listdir(source_dir)
     use_num = len(files)
     counter = 0 
+    old_objs = set()
     
     for file in files:
         try:
+            old_objects = set(bpy.context.scene.objects)
             use_string = source_dir+"/"+file
             import_armature(use_string)
             print("[Mixamo Root] Now importing: " + str(use_string))
@@ -159,13 +167,13 @@ def get_all_anims(source_dir, root_bone_name="RootMotion", hip_bone_name="mixamo
             copyHips(root_bone_name=root_bone_name, hip_bone_name=hip_bone_name)
                 
             if  counter != use_num:
-                deleteArmature()
-                pass
+                imported_objects = set(bpy.context.scene.objects) - old_objects
+                deleteArmature(imported_objects)
             else: 
                 pass
         except Exception as e:
-                log.error("[Mixamo Root] ERROR get_all_anims raised %s when processing %s" % (str(e), file))
-                return -1
+            log.error("[Mixamo Root] ERROR get_all_anims raised %s when processing %s" % (str(e), file))
+            return -1
     # bpy.context.area.ui_type = 'TEXT_EDITOR'
     bpy.context.scene.frame_start = 0
     bpy.ops.object.mode_set(mode='OBJECT')
@@ -173,7 +181,10 @@ def get_all_anims(source_dir, root_bone_name="RootMotion", hip_bone_name="mixamo
 
 def get_anim(source_file, root_bone_name="RootMotion", hip_bone_name="mixamorig:Hips", rename_components=False, name_prefix="mixamorig:"):
     counter = 0
+    old_objs = set()
+
     try:
+        old_objects = set(bpy.context.scene.objects)
         import_armature(source_file)
         print("[Mixamo Root] Now importing: " + source_file)
         counter += 1
@@ -183,10 +194,12 @@ def get_anim(source_file, root_bone_name="RootMotion", hip_bone_name="mixamorig:
         fixBones(rename_components=rename_components, name_prefix=name_prefix)
         scaleAll()
         copyHips(root_bone_name=root_bone_name, hip_bone_name=hip_bone_name)
+        imported_objects = set(bpy.context.scene.objects) - old_objects
+        deleteArmature(imported_objects)
       
     except Exception as e:
-                log.error("[Mixamo Root] ERROR get_anim raised %s when processing %s" % (str(e), source_file))
-                return -1
+        log.error("[Mixamo Root] ERROR get_anim raised %s when processing %s" % (str(e), source_file))
+        return -1
     # bpy.context.area.ui_type = 'TEXT_EDITOR'
     bpy.context.scene.frame_start = 0
     bpy.ops.object.mode_set(mode='OBJECT') 
