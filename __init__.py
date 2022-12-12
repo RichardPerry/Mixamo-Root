@@ -24,7 +24,7 @@
 bl_info = {
     "name": "Mixamo Root",
     "author": "Richard Perry, Johngoss725",
-    "version": (0, 1, 0),
+    "version": (1, 0, 0),
     "blender": (2, 80, 0),
     "location": "3D View > UI (Right Panel) > Mixamo Tab",
     "description": ("Script to bake insert root motion bone for Mixamo Animations"),

@@ -119,7 +119,7 @@ def copyHips(root_bone_name="RootMotion", hip_bone_name="mixamorig:Hips"):
     
 def deleteArmature(imported_objects=set()):
     if imported_objects == set():
-        log.warning("No armature imported, nothing to delete")
+        log.warning("[Mixamo Root] No armature imported, nothing to delete")
     else:
         bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.select_all(action='DESELECT')
@@ -133,7 +133,7 @@ def import_armature(path):
     bpy.ops.import_scene.fbx(filepath = path,  automatic_bone_orientation=True)
     
 def add_root_bone(root_bone_name="RootMotion", hip_bone_name="mixamorig:Hips"):
-    armature = bpy.data.objects[0]
+    armature = bpy.context.selected_objects[0]
     bpy.ops.object.mode_set(mode='EDIT')
 
     root_bone = armature.data.edit_bones.new(root_bone_name)
@@ -151,15 +151,18 @@ def get_all_anims(source_dir, root_bone_name="RootMotion", hip_bone_name="mixamo
     use_num = len(files)
     counter = 0 
     old_objs = set()
+    current_context = bpy.context.area.ui_type
     
     for file in files:
         try:
             old_objects = set(bpy.context.scene.objects)
             use_string = source_dir+"/"+file
             import_armature(use_string)
+            imported_objects = set(bpy.context.scene.objects) - old_objects
+            imported_actions = [x.animation_data.action for x in imported_objects if x.animation_data]
             print("[Mixamo Root] Now importing: " + str(use_string))
             counter += 1
-            bpy.data.objects[0].animation_data.action.name = Path(use_string).resolve().stem
+            imported_actions[0].name = Path(use_string).resolve().stem
             
             add_root_bone(root_bone_name=root_bone_name, hip_bone_name=hip_bone_name)
             fixBones(rename_components=rename_components, name_prefix=name_prefix)
@@ -167,14 +170,13 @@ def get_all_anims(source_dir, root_bone_name="RootMotion", hip_bone_name="mixamo
             copyHips(root_bone_name=root_bone_name, hip_bone_name=hip_bone_name)
                 
             if  counter != use_num:
-                imported_objects = set(bpy.context.scene.objects) - old_objects
                 deleteArmature(imported_objects)
             else: 
                 pass
         except Exception as e:
             log.error("[Mixamo Root] ERROR get_all_anims raised %s when processing %s" % (str(e), file))
             return -1
-    # bpy.context.area.ui_type = 'TEXT_EDITOR'
+    bpy.context.area.ui_type = current_context
     bpy.context.scene.frame_start = 0
     bpy.ops.object.mode_set(mode='OBJECT')
 
@@ -182,25 +184,27 @@ def get_all_anims(source_dir, root_bone_name="RootMotion", hip_bone_name="mixamo
 def get_anim(source_file, root_bone_name="RootMotion", hip_bone_name="mixamorig:Hips", rename_components=False, name_prefix="mixamorig:"):
     counter = 0
     old_objs = set()
+    current_context = bpy.context.area.ui_type
 
     try:
         old_objects = set(bpy.context.scene.objects)
         import_armature(source_file)
+        imported_objects = set(bpy.context.scene.objects) - old_objects
+        imported_actions = [x.animation_data.action for x in imported_objects if x.animation_data]
         print("[Mixamo Root] Now importing: " + source_file)
         counter += 1
-        bpy.data.objects[0].animation_data.action.name = Path(source_file).resolve().stem
+        imported_actions[0].name = Path(source_file).resolve().stem
             
         add_root_bone(root_bone_name=root_bone_name, hip_bone_name=hip_bone_name)
         fixBones(rename_components=rename_components, name_prefix=name_prefix)
         scaleAll()
         copyHips(root_bone_name=root_bone_name, hip_bone_name=hip_bone_name)
-        imported_objects = set(bpy.context.scene.objects) - old_objects
         deleteArmature(imported_objects)
       
     except Exception as e:
         log.error("[Mixamo Root] ERROR get_anim raised %s when processing %s" % (str(e), source_file))
         return -1
-    # bpy.context.area.ui_type = 'TEXT_EDITOR'
+    bpy.context.area.ui_type = current_context
     bpy.context.scene.frame_start = 0
     bpy.ops.object.mode_set(mode='OBJECT') 
 
