@@ -17,6 +17,9 @@ This addon does the following things:
 3) Removes all but one imported armatures, as it assumes all animations imported are tailored to a single model.
 4) [Optionally] Renames the armature to remove the prefix.
 
+Note, due to bugs with Godot (As this addon was designed with its compatibility in mind) it assumes that the desired start frame for actions is 0 and will be adjusted as such. Additionally, all animations imported will be set to start from 0. If this is not desired their keyframes can be shifted manually in the action editor by selecting the animation, moving the mouse over to the panel, typing 'A > G > X' and using the mouse to drag the frames.
+
+A future feature may be added to allow the addon to do this automatically, however due to quirks in the way imports work this has not yet been implemented.
 
 # How to use:
 Install and enable the addon by downloading this repo as a zip file and directly importing it from the preferences menu.
