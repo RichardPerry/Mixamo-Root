@@ -24,7 +24,7 @@
 bl_info = {
     "name": "Mixamo Root",
     "author": "Richard Perry, Johngoss725",
-    "version": (1, 0, 0),
+    "version": (1, 1, 0),
     "blender": (2, 80, 0),
     "location": "3D View > UI (Right Panel) > Mixamo Tab",
     "description": ("Script to bake insert root motion bone for Mixamo Animations"),
@@ -62,7 +62,7 @@ class MixamoPropertyGroup(bpy.types.PropertyGroup):
         subtype='NONE')
     name_prefix: bpy.props.StringProperty(
         name="Name Prefix",
-        description="Prefix of armature components to identify if not mixamorig:",
+        description="Prefix of armature components to identify if not 'mixamorig:'",
         maxlen = 256,
         default = "mixamorig:",
         subtype='NONE')
@@ -72,16 +72,32 @@ class MixamoPropertyGroup(bpy.types.PropertyGroup):
         maxlen = 256,
         default = "",
         subtype='DIR_PATH')
-    rename_components: bpy.props.BoolProperty(
+    remove_prefix: bpy.props.BoolProperty(
         name="Remove Prefix",
         description="Remove prefix from armature component names",
+        default=False)
+    insert_root: bpy.props.BoolProperty(
+        name="Insert Root",
+        description="Inserts a root bone at the base of the model aligned with the hip's horizontal plane coordinates",
+        default=False)
+    delete_armatures: bpy.props.BoolProperty(
+        name="Delete Armatures",
+        description="Deletes all but one imported armature in the blend file. This assumes you've imported mixamo armatures for animations all applied to the same model",
+        default=False)
+    delete_applied_armatures: bpy.props.BoolProperty(
+        name="Delete Armatures",
+        description="Deletes all armatures for applied animations after the process is complete",
+        default=False)
+    push_nla: bpy.props.BoolProperty(
+        name="Push To NLA",
+        description="Pushes all the actions created for the control rig to the NLA",
         default=False)
 
 class OBJECT_OT_ImportAnimations(bpy.types.Operator):
     '''Operator for importing animations and inserting root bones'''
     bl_idname = "mixamo.importanim"
     bl_label = "Import Animations"
-    bl_description = "Imports all mixamo animations from the [Source Directory], insert root bones, and merges into a single armature."
+    bl_description = "Imports all mixamo animations from the [Source Directory], insert root bones, and merges into a single armature"
 
     def execute(self, context):
         mixamo = context.scene.mixamo
@@ -89,7 +105,9 @@ class OBJECT_OT_ImportAnimations(bpy.types.Operator):
         hip_name = mixamo.hip_name
         root_name = mixamo.root_name
         name_prefix = mixamo.name_prefix
-        rename_components = mixamo.rename_components
+        remove_prefix = mixamo.remove_prefix
+        insert_root = mixamo.insert_root
+        delete_armatures = mixamo.delete_armatures
         if source_directory == '':
             self.report({'ERROR_INVALID_INPUT'}, "Error: no Source Directory set.")
             return{ 'CANCELLED'}
@@ -99,14 +117,35 @@ class OBJECT_OT_ImportAnimations(bpy.types.Operator):
         if root_name == '':
             self.report({'ERROR_INVALID_INPUT'}, "Error: no Root Bone Name set.")
             return{ 'CANCELLED'}
-        if rename_components == True:
+        if remove_prefix == True:
             self.report({'WARNING'}, "Remove Prefix set to true, armature components will have their mixamo prefix removed.")
+        if delete_armatures == True:
+            self.report({'WARNING'}, "Delete Armatures set to true, imported animation armatures will be removed.")
         mixamoroot.get_all_anims(
             bpy.path.abspath(source_directory),
             root_bone_name=root_name,
             hip_bone_name=hip_name,
-            rename_components=rename_components,
-            name_prefix=name_prefix)
+            remove_prefix=remove_prefix, name_prefix=name_prefix, insert_root=insert_root, delete_armatures=delete_armatures)
+        return{ 'FINISHED'}
+
+class OBJECT_OT_ApplyAnimations(bpy.types.Operator):
+    '''Operator for applying all imported animations to a target control rig'''
+    bl_idname = "mixamo.applyanims"
+    bl_label = "Apply Animations"
+    bl_description = "Applies all the imported mixamo animations, to a single mixamo control rig. ONLY for mixamo control rigs generated with mixamo addon"
+
+    def execute(self, context):
+        mixamo = context.scene.mixamo
+        mixamo_control_rig = context.scene.mixamo_control_rig
+        delete_applied_armatures = mixamo.delete_applied_armatures
+        control_rig = mixamo_control_rig
+        push_nla = mixamo.push_nla
+        if control_rig == '' or control_rig == None or bpy.data.objects[control_rig.name].type != "ARMATURE":
+            self.report({'ERROR_INVALID_INPUT'}, "Error: No valid control rig armature selected")
+            return{ 'CANCELLED'}
+        if delete_applied_armatures == True:
+            self.report({'WARNING'}, "Delete Armatures set to true, imported animation armatures will be removed.")
+        mixamoroot.apply_all_anims(delete_applied_armatures=delete_applied_armatures, control_rig=control_rig, push_nla=push_nla)
         return{ 'FINISHED'}
 
 class MIXAMOCONV_VIEW_3D_PT_mixamoroot(bpy.types.Panel):
@@ -125,7 +164,10 @@ class MIXAMOCONV_VIEW_3D_PT_mixamoroot(bpy.types.Panel):
         box = layout.box()
         # Options for how to do the conversion
         row = box.row()
-        row.prop(scene.mixamo, "rename_components", toggle=True)
+        row.prop(scene.mixamo, "remove_prefix", toggle=True)
+        row = box.row()
+        row.prop(scene.mixamo, "insert_root", toggle=True) # todo
+        row.prop(scene.mixamo, "delete_armatures", toggle=True) # todo delete_applied_armatures
         row = box.row()
         box.prop(scene.mixamo, "hip_name")
         row = box.row()
@@ -142,19 +184,38 @@ class MIXAMOCONV_VIEW_3D_PT_mixamoroot(bpy.types.Panel):
         row.scale_y = 2.0
         row.operator("mixamo.importanim")
         status_row = box.row()
+        box = layout.box()
+        box.label(text="Animation Helpers")
+        row = box.row()
+        box.label(text="Control Rig:")
+        row = box.row()
+        row.prop(scene, "mixamo_control_rig")
+        row = box.row()
+        row.prop(scene.mixamo, "delete_applied_armatures", toggle=True) # todo delete_applied_armatures
+        row.prop(scene.mixamo, "push_nla", toggle=True)
+        row = box.row()
+        # box.prop(scene.mixamo, "mixamo.applyanims") # todo
+        row.operator("mixamo.applyanims")
+        # status_row = box.row()
 
 classes = (
     OBJECT_OT_ImportAnimations,
+    OBJECT_OT_ApplyAnimations,
     MIXAMOCONV_VIEW_3D_PT_mixamoroot,
 )
 
 def register():
     bpy.utils.register_class(MixamoPropertyGroup)
+    bpy.types.Scene.mixamo_control_rig = bpy.props.PointerProperty(
+                                            type=bpy.types.Object,
+                                            name="",
+                                            description="The control rig generated by mixamo, used as target for the animation application function")
     bpy.types.Scene.mixamo = bpy.props.PointerProperty(type=MixamoPropertyGroup)
     for cls in classes:
         bpy.utils.register_class(cls)
     '''
     bpy.utils.register_class(OBJECT_OT_ImportAnimations)
+    bpy.utils.register_class(OBJECT_OT_ApplyAnimations)
     bpy.utils.unregister_class(MixamorootPanel)
     '''
 
@@ -165,8 +226,10 @@ def unregister():
     '''
     bpy.utils.unregister_class(MixamoPropertyGroup)
     bpy.utils.register_class(OBJECT_OT_ImportAnimations)
+    bpy.utils.register_class(OBJECT_OT_ApplyAnimations)
     bpy.utils.unregister_class(MixamorootPanel)
     '''
+    del bpy.types.Scene.mixamo_control_rig
 
 
 if __name__ == "__main__":
