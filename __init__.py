@@ -24,7 +24,7 @@
 bl_info = {
     "name": "Mixamo Root",
     "author": "Richard Perry, Johngoss725",
-    "version": (1, 1, 0),
+    "version": (1, 1, 2),
     "blender": (2, 80, 0),
     "location": "3D View > UI (Right Panel) > Mixamo Tab",
     "description": ("Script to bake insert root motion bone for Mixamo Animations"),
@@ -56,13 +56,13 @@ class MixamoPropertyGroup(bpy.types.PropertyGroup):
         subtype='NONE')
     root_name: bpy.props.StringProperty(
         name="Root Bone Name",
-        description="Name to save the root bone as if not RootMotion",
+        description="Name to save the root bone, default is Root",
         maxlen = 256,
-        default = "RootMotion",
+        default = "Root",
         subtype='NONE')
     name_prefix: bpy.props.StringProperty(
         name="Name Prefix",
-        description="Prefix of armature components to identify if not 'mixamorig:'",
+        description="Prefix of mixamo armature components to help identification, if not default of 'mixamorig:'",
         maxlen = 256,
         default = "mixamorig:",
         subtype='NONE')
@@ -162,12 +162,13 @@ class MIXAMOCONV_VIEW_3D_PT_mixamoroot(bpy.types.Panel):
         scene = bpy.context.scene
 
         box = layout.box()
+        box.label(text="Import Helpers")
         # Options for how to do the conversion
         row = box.row()
-        row.prop(scene.mixamo, "remove_prefix", toggle=True)
+        row.prop(scene.mixamo, "insert_root", toggle=True)
         row = box.row()
-        row.prop(scene.mixamo, "insert_root", toggle=True) # todo
-        row.prop(scene.mixamo, "delete_armatures", toggle=True) # todo delete_applied_armatures
+        row.prop(scene.mixamo, "remove_prefix", toggle=True)
+        row.prop(scene.mixamo, "delete_armatures", toggle=True)
         row = box.row()
         box.prop(scene.mixamo, "hip_name")
         row = box.row()

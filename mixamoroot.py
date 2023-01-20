@@ -31,8 +31,6 @@ from pathlib import Path
 
 
 log = logging.getLogger(__name__)
-#log.setLevel('DEBUG')
-# imported_objects = set(bpy.context.scene.objects)
 
 # in future remove_prefix should be renamed to rename prefix and a target prefix should be specifiable via ui
 def fixBones(remove_prefix=False, name_prefix="mixamorig:"):
@@ -58,7 +56,7 @@ def fixBones(remove_prefix=False, name_prefix="mixamorig:"):
         for action in bpy.data.actions:
             fc = action.fcurves
             for f in fc:
-                f.data_path = f.data_path.replace("mixamorig:","")
+                f.data_path = f.data_path.replace(name_prefix,"")
         
 def scaleAll():
     bpy.ops.object.mode_set(mode='OBJECT')
@@ -85,11 +83,11 @@ def scaleAll():
     use_proportional_projected=False)
 
 
-def copyHips(root_bone_name="RootMotion", hip_bone_name="mixamorig:Hips"):
+def copyHips(root_bone_name="Root", hip_bone_name="mixamorig:Hips", name_prefix="mixamorig:"):
     bpy.context.area.ui_type = 'FCURVES'
     #SELECT OUR ROOT MOTION BONE 
     bpy.ops.pose.select_all(action='DESELECT')
-    bpy.context.object.pose.bones[root_bone_name].bone.select = True
+    bpy.context.object.pose.bones[name_prefix + root_bone_name].bone.select = True
     # SET FRAME TO ZERO
     bpy.ops.graph.cursor_set(frame=0.0, value=0.0)
     #ADD NEW KEYFRAME
@@ -112,14 +110,17 @@ def copyHips(root_bone_name="RootMotion", hip_bone_name="mixamorig:Hips"):
             myFcurves.remove(i)
                 
     bpy.ops.pose.select_all(action='DESELECT')
-    bpy.context.object.pose.bones[root_bone_name].bone.select = True
+    bpy.context.object.pose.bones[name_prefix + root_bone_name].bone.select = True
     bpy.ops.graph.paste()        
         
     bpy.context.area.ui_type = 'VIEW_3D'
+    bpy.ops.object.mode_set(mode='OBJECT')
 
     
 def deleteArmature(imported_objects=set()):
-    armature = bpy.context.selected_objects[0]
+    armature = None
+    if bpy.context.selected_objects:
+        armature = bpy.context.selected_objects[0]
     if imported_objects == set():
         log.warning("[Mixamo Root] No armature imported, nothing to delete")
     else:
@@ -129,27 +130,39 @@ def deleteArmature(imported_objects=set()):
             bpy.data.objects[obj.name].select_set(True)
         
     bpy.ops.object.delete(use_global=False, confirm=False)
-    bpy.context.view_layer.objects.active = armature
+    if bpy.context.selected_objects:
+        bpy.context.view_layer.objects.active = armature
 
-def import_armature(path, insert_root=False):
+def import_armature(filepath, root_bone_name="Root", hip_bone_name="mixamorig:Hips", remove_prefix=False, name_prefix="mixamorig:",  insert_root=False, delete_armatures=False):
+    old_objs = set(bpy.context.scene.objects)
     if insert_root:
         bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
-        bpy.ops.import_scene.fbx(filepath = path,  automatic_bone_orientation=True)
+        bpy.ops.import_scene.fbx(filepath = filepath)#,  automatic_bone_orientation=True)
     else:
-        bpy.ops.import_scene.fbx(filepath = path)#,  automatic_bone_orientation=True)
+        bpy.ops.import_scene.fbx(filepath = filepath)#,  automatic_bone_orientation=True)
     
-def add_root_bone(root_bone_name="RootMotion", hip_bone_name="mixamorig:Hips"):
+    imported_objects = set(bpy.context.scene.objects) - old_objs
+    imported_actions = [x.animation_data.action for x in imported_objects if x.animation_data]
+    print("[Mixamo Root] Now importing: " + str(filepath))
+    imported_actions[0].name = Path(filepath).resolve().stem # Only reads the first animation associated with an imported armature
+    
+    if insert_root:
+        add_root_bone(root_bone_name, hip_bone_name, remove_prefix, name_prefix)
+    
+    
+def add_root_bone(root_bone_name="Root", hip_bone_name="mixamorig:Hips", remove_prefix=False, name_prefix="mixamorig:"):
     armature = bpy.context.selected_objects[0]
     bpy.ops.object.mode_set(mode='EDIT')
 
-    root_bone = armature.data.edit_bones.new(root_bone_name)
-    root_bone.tail.y = 25
-    # Likely not needed as default is 0. This is rotation about veritcal axis.
-    root_bone.roll = 0
+    root_bone = armature.data.edit_bones.new(name_prefix + root_bone_name)
+    root_bone.tail.y = 30
 
-    bpy.ops.object.mode_set(mode='EDIT')
-    armature.data.edit_bones[hip_bone_name].parent = armature.data.edit_bones[root_bone_name]
+    armature.data.edit_bones[hip_bone_name].parent = armature.data.edit_bones[name_prefix + root_bone_name]
     bpy.ops.object.mode_set(mode='OBJECT')
+
+    fixBones(remove_prefix=remove_prefix, name_prefix=name_prefix)
+    scaleAll()
+    copyHips(root_bone_name=root_bone_name, hip_bone_name=hip_bone_name, name_prefix=name_prefix)
 
 def push(obj, action, track_name=None, start_frame=0):
     # Simulate push :
@@ -164,37 +177,23 @@ def push(obj, action, track_name=None, start_frame=0):
     strip = new_track.strips.new(action.name, start_frame, action)
     obj.animation_data.action = None
 
-def get_all_anims(source_dir, root_bone_name="RootMotion", hip_bone_name="mixamorig:Hips", remove_prefix=False, name_prefix="mixamorig:",  insert_root=False, delete_armatures=False):
+def get_all_anims(source_dir, root_bone_name="Root", hip_bone_name="mixamorig:Hips", remove_prefix=False, name_prefix="mixamorig:",  insert_root=False, delete_armatures=False):
     files = os.listdir(source_dir)
-    use_num = len(files)
-    counter = 0 
-    old_objs = set()
+    num_files = len(files)
     current_context = bpy.context.area.ui_type
-
-    if not insert_root:
-        root_bone_name=hip_bone_name
+    old_objs = set(bpy.context.scene.objects)
     
     for file in files:
+        print("file: " + str(file))
         try:
-            old_objs = set(bpy.context.scene.objects)
-            use_string = source_dir+"/"+file
-            import_armature(use_string, insert_root)
+            filepath = source_dir+"/"+file
+            import_armature(filepath, root_bone_name, hip_bone_name, remove_prefix, name_prefix, insert_root, delete_armatures)
             imported_objects = set(bpy.context.scene.objects) - old_objs
-            imported_actions = [x.animation_data.action for x in imported_objects if x.animation_data]
-            print("[Mixamo Root] Now importing: " + str(use_string))
-            counter += 1
-            imported_actions[0].name = Path(use_string).resolve().stem
-            
-            if insert_root:
-                add_root_bone(root_bone_name=root_bone_name, hip_bone_name=hip_bone_name)
-                fixBones(remove_prefix=remove_prefix, name_prefix=name_prefix)
-                scaleAll()
-                copyHips(root_bone_name=root_bone_name, hip_bone_name=hip_bone_name)
-                
-            if (counter != use_num) and delete_armatures:
+            if delete_armatures and num_files > 1:
                 deleteArmature(imported_objects)
-            else: 
-                pass
+                num_files -= 1
+
+
         except Exception as e:
             log.error("[Mixamo Root] ERROR get_all_anims raised %s when processing %s" % (str(e), file))
             return -1
@@ -205,12 +204,9 @@ def get_all_anims(source_dir, root_bone_name="RootMotion", hip_bone_name="mixamo
 def apply_all_anims(delete_applied_armatures=False, control_rig=None, push_nla=False):
     if control_rig and control_rig.type == 'ARMATURE':
         bpy.ops.object.mode_set(mode='OBJECT')
-        # control_rig = bpy.context.view_layer.objects.active
 
         imported_objects = set(bpy.context.scene.objects)
         imported_armatures = [x for x in imported_objects if x.type == 'ARMATURE' and x.name != control_rig.name]
-        # imported_actions = [x.animation_data.action for x in imported_objects if x.animation_data]
-        # created_actions = []
 
         for obj in imported_armatures:
             action_name = obj.animation_data.action.name
@@ -230,42 +226,7 @@ def apply_all_anims(delete_applied_armatures=False, control_rig=None, push_nla=F
             if delete_applied_armatures:
                 bpy.context.view_layer.objects.active = control_rig
                 deleteArmature(set([obj]))
-                      
-        # bpy.ops.object.mode_set(mode='OBJECT')
 
-def get_anim(source_file, root_bone_name="RootMotion", hip_bone_name="mixamorig:Hips", remove_prefix=False, name_prefix="mixamorig:",  insert_root=False, delete_armatures=False):
-    counter = 0
-    old_objs = set()
-    current_context = bpy.context.area.ui_type
-
-    if insert_root==False:
-        root_bone_name=hip_bone_name
-
-    try:
-        old_objects = set(bpy.context.scene.objects)
-        import_armature(source_file, insert_root)
-        imported_objects = set(bpy.context.scene.objects) - old_objects
-        imported_actions = [x.animation_data.action for x in imported_objects if x.animation_data]
-        print("[Mixamo Root] Now importing: " + source_file)
-        counter += 1
-        imported_actions[0].name = Path(source_file).resolve().stem
-            
-        if insert_root:
-            add_root_bone(root_bone_name=root_bone_name, hip_bone_name=hip_bone_name)
-            fixBones(remove_prefix=remove_prefix, name_prefix=name_prefix)
-            scaleAll()
-        if insert_root:
-            copyHips(root_bone_name=root_bone_name, hip_bone_name=hip_bone_name)
-        
-        if delete_armatures:
-            deleteArmature(imported_objects)
-      
-    except Exception as e:
-        log.error("[Mixamo Root] ERROR get_anim raised %s when processing %s" % (str(e), source_file))
-        return -1
-    bpy.context.area.ui_type = current_context
-    bpy.context.scene.frame_start = 0
-    bpy.ops.object.mode_set(mode='OBJECT') 
 
 if __name__ == "__main__":
     dir_path = "" # If using script in place please set this before running.
