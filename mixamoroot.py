@@ -179,27 +179,31 @@ def push(obj, action, track_name=None, start_frame=0):
 
 def get_all_anims(source_dir, root_bone_name="Root", hip_bone_name="mixamorig:Hips", remove_prefix=False, name_prefix="mixamorig:",  insert_root=False, delete_armatures=False):
     files = os.listdir(source_dir)
-    num_files = len(files)
     current_context = bpy.context.area.ui_type
     old_objs = set(bpy.context.scene.objects)
     
+    first = True
     for file in files:
         print("file: " + str(file))
         try:
             filepath = source_dir+"/"+file
             import_armature(filepath, root_bone_name, hip_bone_name, remove_prefix, name_prefix, insert_root, delete_armatures)
             imported_objects = set(bpy.context.scene.objects) - old_objs
-            if delete_armatures and num_files > 1:
-                deleteArmature(imported_objects)
-                num_files -= 1
-
+            if delete_armatures:
+                if first:
+                    old_objs.update(imported_objects)
+                    first = False
+                else:
+                    deleteArmature(imported_objects)
 
         except Exception as e:
             log.error("[Mixamo Root] ERROR get_all_anims raised %s when processing %s" % (str(e), file))
             return -1
+        
     bpy.context.area.ui_type = current_context
     bpy.context.scene.frame_start = 0
-    bpy.ops.object.mode_set(mode='OBJECT')
+    if current_context == "VIEW_3D":
+        bpy.ops.object.mode_set(mode='OBJECT')
 
 def apply_all_anims(delete_applied_armatures=False, control_rig=None, push_nla=False):
     if control_rig and control_rig.type == 'ARMATURE':
