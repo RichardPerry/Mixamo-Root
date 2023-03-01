@@ -24,7 +24,7 @@
 bl_info = {
     "name": "Mixamo Root",
     "author": "Richard Perry, Johngoss725",
-    "version": (1, 1, 2),
+    "version": (1, 2, 2),
     "blender": (2, 80, 0),
     "location": "3D View > UI (Right Panel) > Mixamo Tab",
     "description": ("Script to bake insert root motion bone for Mixamo Animations"),
@@ -148,6 +148,27 @@ class OBJECT_OT_ApplyAnimations(bpy.types.Operator):
         mixamoroot.apply_all_anims(delete_applied_armatures=delete_applied_armatures, control_rig=control_rig, push_nla=push_nla)
         return{ 'FINISHED'}
 
+class OBJECT_OT_AddRootNLA(bpy.types.Operator):
+    '''Operator for adding a root bone to all animations to in the NLA, including keyframes'''
+    bl_idname = "mixamo.addrootnla"
+    bl_label = "Add Root"
+    bl_description = "Adds a root bone to all animation strips in the NLA for the selected armature, iterating through every keyframe and copying the hip position. Sets the Z coordinate to a minimum of 0"
+
+    # Works on the selected armature only
+    def execute(self, context):
+        mixamo = context.scene.mixamo
+        hip_name = mixamo.hip_name
+        root_name = mixamo.root_name
+        name_prefix = mixamo.name_prefix
+        if hip_name == '':
+            self.report({'ERROR_INVALID_INPUT'}, "Error: no Hip Bone Name set.")
+            return{ 'CANCELLED'}
+        if root_name == '':
+            self.report({'ERROR_INVALID_INPUT'}, "Error: no Root Bone Name set.")
+            return{ 'CANCELLED'}
+        mixamoroot.add_root_bone_nla(root_bone_name=root_name, hip_bone_name=hip_name, name_prefix=name_prefix)
+        return{ 'FINISHED'}
+
 class MIXAMOCONV_VIEW_3D_PT_mixamoroot(bpy.types.Panel):
     """Creates a Tab in the Toolshelve in 3D_View"""
     bl_label = "Mixamo Root"
@@ -197,11 +218,16 @@ class MIXAMOCONV_VIEW_3D_PT_mixamoroot(bpy.types.Panel):
         row = box.row()
         # box.prop(scene.mixamo, "mixamo.applyanims") # todo
         row.operator("mixamo.applyanims")
+        row = box.row()
+        row.scale_y = 2.0
+        row.operator("mixamo.addrootnla")
+        status_row = box.row()
         # status_row = box.row()
 
 classes = (
     OBJECT_OT_ImportAnimations,
     OBJECT_OT_ApplyAnimations,
+    OBJECT_OT_AddRootNLA,
     MIXAMOCONV_VIEW_3D_PT_mixamoroot,
 )
 
@@ -217,7 +243,8 @@ def register():
     '''
     bpy.utils.register_class(OBJECT_OT_ImportAnimations)
     bpy.utils.register_class(OBJECT_OT_ApplyAnimations)
-    bpy.utils.unregister_class(MixamorootPanel)
+    bpy.utils.register_class(OBJECT_OT_AddRootNLA)
+    bpy.utils.register_class(MixamorootPanel)
     '''
 
 def unregister():
@@ -226,8 +253,9 @@ def unregister():
     bpy.utils.unregister_class(MixamoPropertyGroup)    
     '''
     bpy.utils.unregister_class(MixamoPropertyGroup)
-    bpy.utils.register_class(OBJECT_OT_ImportAnimations)
-    bpy.utils.register_class(OBJECT_OT_ApplyAnimations)
+    bpy.utils.uregister_class(OBJECT_OT_ImportAnimations)
+    bpy.utils.uregister_class(OBJECT_OT_ApplyAnimations)
+    bpy.utils.unregister_class(OBJECT_OT_AddRootNLA)
     bpy.utils.unregister_class(MixamorootPanel)
     '''
     del bpy.types.Scene.mixamo_control_rig
