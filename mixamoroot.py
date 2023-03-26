@@ -338,18 +338,19 @@ def get_all_anims(source_dir, root_bone_name="Root", hip_bone_name="mixamorig:Hi
     
     for file in files:
         print("file: " + str(file))
-        try:
-            filepath = source_dir+"/"+file
-            import_armature(filepath, root_bone_name, hip_bone_name, remove_prefix, name_prefix, insert_root, delete_armatures)
-            imported_objects = set(bpy.context.scene.objects) - old_objs
-            if delete_armatures and num_files > 1:
-                deleteArmature(imported_objects)
-                num_files -= 1
+        if not file.endswith('.DS_Store') and file.endswith('.fbx'):
+            try:
+                filepath = source_dir+"/"+file
+                import_armature(filepath, root_bone_name, hip_bone_name, remove_prefix, name_prefix, insert_root, delete_armatures)
+                imported_objects = set(bpy.context.scene.objects) - old_objs
+                if delete_armatures and num_files > 1:
+                    deleteArmature(imported_objects)
+                    num_files -= 1
 
 
-        except Exception as e:
-            log.error("[Mixamo Root] ERROR get_all_anims raised %s when processing %s" % (str(e), file))
-            return -1
+            except Exception as e:
+                log.error("[Mixamo Root] ERROR get_all_anims raised %s when processing %s" % (str(e), file))
+                return -1
     bpy.context.area.ui_type = current_context
     bpy.context.scene.frame_start = 0
     bpy.ops.object.mode_set(mode='OBJECT')
