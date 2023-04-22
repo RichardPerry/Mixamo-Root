@@ -3,20 +3,16 @@
 '''
     Copyright (C) 2022  Richard Perry
     Copyright (C) Average Godot Enjoyer (Johngoss725)
-
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
-
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
-
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
     Note that Johngoss725's original contributions were published under a 
     Creative Commons 1.0 Universal License (CC0-1.0) located at
     <https://github.com/Johngoss725/Mixamo-To-Godot>.
@@ -107,12 +103,37 @@ def copyHips(root_bone_name="Root", hip_bone_name="mixamorig:Hips", name_prefix=
     for i in myFcurves:
         hip_bone_fcvurve = 'pose.bones["'+hip_bone_name+'"].location'
         if str(i.data_path)==hip_bone_fcvurve:
-            myFcurves.remove(i)
+            if i.array_index != 1:
+                myFcurves.remove(i)
                 
     bpy.ops.pose.select_all(action='DESELECT')
     bpy.context.object.pose.bones[name_prefix + root_bone_name].bone.select = True
     bpy.ops.graph.paste()        
-        
+
+    # Get the animation data and action
+    anim_data = bpy.context.object.animation_data
+    action = anim_data.action if anim_data else None
+
+    # Get the fcurves for the root bone's location
+    fcurves = [fcurve for fcurve in action.fcurves if fcurve.data_path == 'pose.bones["{}"].location'.format(name_prefix + root_bone_name) and fcurve.array_index in range(3)]
+    for i in fcurves:
+        print(i.data_path)
+
+    # Set the minimum Y value of the root bone to 0
+    z_fcurve = fcurves[1]
+    for keyframe in z_fcurve.keyframe_points:
+        if keyframe.co.y < 0:
+            keyframe.co.y = 0
+    
+    
+    anim_data = bpy.context.object.animation_data
+    action = anim_data.action if anim_data else None
+    hips_fcurves = [hips_fcurve for hips_fcurve in action.fcurves if hips_fcurve.data_path == 'pose.bones["{}"].location'.format(hip_bone_name) and hips_fcurve.array_index in range(3)]
+    for keyframe in hips_fcurves[0].keyframe_points:
+        if keyframe.co.y > 0:
+            keyframe.co.y = 0
+            #keyframe.co.y = keyframe.co.y / 2
+
     bpy.context.area.ui_type = 'VIEW_3D'
     bpy.ops.object.mode_set(mode='OBJECT')
 
