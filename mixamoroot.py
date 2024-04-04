@@ -283,6 +283,12 @@ def import_armature(filepath, root_bone_name="Root", hip_bone_name="mixamorig:Hi
     imported_actions = [x.animation_data.action for x in imported_objects if x.animation_data]
     print("[Mixamo Root] Now importing: " + str(filepath))
     imported_actions[0].name = Path(filepath).resolve().stem # Only reads the first animation associated with an imported armature
+    imported_armatures = [obj for obj in imported_objects if obj.type == 'ARMATURE']
+
+
+    if imported_armatures:
+        armature = imported_armatures[0]
+        armature.name = Path(filepath).resolve().stem
     
     if insert_root:
         add_root_bone(root_bone_name, hip_bone_name, remove_prefix, name_prefix)
