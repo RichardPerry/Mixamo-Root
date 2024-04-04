@@ -293,7 +293,7 @@ def add_root_bone(root_bone_name="Root", hip_bone_name="mixamorig:Hips", remove_
     bpy.ops.object.mode_set(mode='EDIT')
 
     root_bone = armature.data.edit_bones.new(name_prefix + root_bone_name)
-    root_bone.tail.y = 30
+    root_bone.tail.y = 0.3
 
     armature.data.edit_bones[hip_bone_name].parent = armature.data.edit_bones[name_prefix + root_bone_name]
     bpy.ops.object.mode_set(mode='OBJECT')
