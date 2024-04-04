@@ -281,7 +281,7 @@ def import_armature(filepath, root_bone_name="Root", hip_bone_name="mixamorig:Hi
     
     imported_objects = set(bpy.context.scene.objects) - old_objs
     imported_actions = [x.animation_data.action for x in imported_objects if x.animation_data]
-    print("[Mixamo Root] Now importing: " + str(filepath))
+    print("[Mixamo Root] Now importing: " + str(filepath), filepath)
     imported_actions[0].name = Path(filepath).resolve().stem # Only reads the first animation associated with an imported armature
     imported_armatures = [obj for obj in imported_objects if obj.type == 'ARMATURE']
 
@@ -345,7 +345,7 @@ def get_all_anims(source_dir, root_bone_name="Root", hip_bone_name="mixamorig:Hi
     for file in files:
         print("file: " + str(file))
         try:
-            filepath = source_dir+"/"+file
+            filepath = os.path.join(source_dir, file)
             import_armature(filepath, root_bone_name, hip_bone_name, remove_prefix, name_prefix, insert_root, delete_armatures)
             imported_objects = set(bpy.context.scene.objects) - old_objs
             if delete_armatures and num_files > 1:
