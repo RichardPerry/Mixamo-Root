@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 '''
-    Copyright (C) 2022  Richard Perry
+    Copyright (C) 2026  Richard Perry
     Copyright (C) Average Godot Enjoyewo tor (Johngoss725)
 
     This program is free software: you can redistribute it and/or modify
