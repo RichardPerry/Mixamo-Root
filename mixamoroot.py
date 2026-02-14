@@ -2,17 +2,21 @@
 
 '''
     Copyright (C) 2022  Richard Perry
-    Copyright (C) Average Godot Enjoyer (Johngoss725)
+    Copyright (C) Average Godot Enjoyewo tor (Johngoss725)
+
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
+
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
+
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
     Note that Johngoss725's original contributions were published under a 
     Creative Commons 1.0 Universal License (CC0-1.0) located at
     <https://github.com/Johngoss725/Mixamo-To-Godot>.
@@ -302,8 +306,14 @@ def import_armature(filepath, root_bone_name="Root", hip_bone_name="mixamorig:Hi
     
     imported_objects = set(bpy.context.scene.objects) - old_objs
     imported_actions = [x.animation_data.action for x in imported_objects if x.animation_data]
-    print("[Mixamo Root] Now importing: " + str(filepath))
+    print("[Mixamo Root] Now importing: " + str(filepath), filepath)
     imported_actions[0].name = Path(filepath).resolve().stem # Only reads the first animation associated with an imported armature
+    imported_armatures = [obj for obj in imported_objects if obj.type == 'ARMATURE']
+
+
+    if imported_armatures:
+        armature = imported_armatures[0]
+        armature.name = Path(filepath).resolve().stem
     
     if insert_root:
         add_root_bone(root_bone_name, hip_bone_name, remove_prefix, name_prefix)
@@ -361,7 +371,7 @@ def get_all_anims(source_dir, root_bone_name="Root", hip_bone_name="mixamorig:Hi
         print("file: " + str(file))
         if not file.endswith('.DS_Store') and file.endswith('.fbx'):
             try:
-                filepath = source_dir+"/"+file
+                filepath = os.path.join(source_dir, file)
                 import_armature(filepath, root_bone_name, hip_bone_name, remove_prefix, name_prefix, insert_root, delete_armatures)
                 imported_objects = set(bpy.context.scene.objects) - old_objs
                 if delete_armatures and num_files > 1:
