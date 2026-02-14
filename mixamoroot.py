@@ -2,7 +2,7 @@
 
 '''
     Copyright (C) 2022  Richard Perry
-    Copyright (C) Average Godot Enjoyer (Johngoss725)
+    Copyright (C) Average Godot Enjoyewo tor (Johngoss725)
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -107,12 +107,37 @@ def copyHips(root_bone_name="Root", hip_bone_name="mixamorig:Hips", name_prefix=
     for i in myFcurves:
         hip_bone_fcvurve = 'pose.bones["'+hip_bone_name+'"].location'
         if str(i.data_path)==hip_bone_fcvurve:
-            myFcurves.remove(i)
+            if i.array_index != 1:
+                myFcurves.remove(i)
                 
     bpy.ops.pose.select_all(action='DESELECT')
     bpy.context.object.pose.bones[name_prefix + root_bone_name].bone.select = True
     bpy.ops.graph.paste()        
-        
+
+    # Get the animation data and action
+    anim_data = bpy.context.object.animation_data
+    action = anim_data.action if anim_data else None
+
+    # Get the fcurves for the root bone's location
+    fcurves = [fcurve for fcurve in action.fcurves if fcurve.data_path == 'pose.bones["{}"].location'.format(name_prefix + root_bone_name) and fcurve.array_index in range(3)]
+    for i in fcurves:
+        print(i.data_path)
+
+    # Set the minimum Y value of the root bone to 0
+    z_fcurve = fcurves[1]
+    for keyframe in z_fcurve.keyframe_points:
+        if keyframe.co.y < 0:
+            keyframe.co.y = 0
+    
+    
+    anim_data = bpy.context.object.animation_data
+    action = anim_data.action if anim_data else None
+    hips_fcurves = [hips_fcurve for hips_fcurve in action.fcurves if hips_fcurve.data_path == 'pose.bones["{}"].location'.format(hip_bone_name) and hips_fcurve.array_index in range(3)]
+    for keyframe in hips_fcurves[0].keyframe_points:
+        if keyframe.co.y > 0:
+            keyframe.co.y = 0
+            #keyframe.co.y = keyframe.co.y / 2
+
     bpy.context.area.ui_type = 'VIEW_3D'
     bpy.ops.object.mode_set(mode='OBJECT')
 
@@ -344,18 +369,19 @@ def get_all_anims(source_dir, root_bone_name="Root", hip_bone_name="mixamorig:Hi
     
     for file in files:
         print("file: " + str(file))
-        try:
-            filepath = os.path.join(source_dir, file)
-            import_armature(filepath, root_bone_name, hip_bone_name, remove_prefix, name_prefix, insert_root, delete_armatures)
-            imported_objects = set(bpy.context.scene.objects) - old_objs
-            if delete_armatures and num_files > 1:
-                deleteArmature(imported_objects)
-                num_files -= 1
+        if not file.endswith('.DS_Store') and file.endswith('.fbx'):
+            try:
+                filepath = os.path.join(source_dir, file)
+                import_armature(filepath, root_bone_name, hip_bone_name, remove_prefix, name_prefix, insert_root, delete_armatures)
+                imported_objects = set(bpy.context.scene.objects) - old_objs
+                if delete_armatures and num_files > 1:
+                    deleteArmature(imported_objects)
+                    num_files -= 1
 
 
-        except Exception as e:
-            log.error("[Mixamo Root] ERROR get_all_anims raised %s when processing %s" % (str(e), file))
-            return -1
+            except Exception as e:
+                log.error("[Mixamo Root] ERROR get_all_anims raised %s when processing %s" % (str(e), file))
+                return -1
     bpy.context.area.ui_type = current_context
     bpy.context.scene.frame_start = 0
     bpy.ops.object.mode_set(mode='OBJECT')
