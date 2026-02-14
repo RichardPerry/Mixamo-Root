@@ -324,8 +324,15 @@ def add_root_bone(root_bone_name="Root", hip_bone_name="mixamorig:Hips", remove_
     armature = bpy.context.selected_objects[0]
     bpy.ops.object.mode_set(mode='EDIT')
 
+    # Get the bounding box dimensions
+    bounding_box = armature.bound_box
+    fixed_ratio = 0.3
+    armature_height = bounding_box[6][2] - bounding_box[0][2]  # Index 2 corresponds to the z-dimension
+    root_bone_length = armature_height * fixed_ratio
+
     root_bone = armature.data.edit_bones.new(name_prefix + root_bone_name)
-    root_bone.tail.y = 30
+    root_bone.tail.y = root_bone_length
+
 
     armature.data.edit_bones[hip_bone_name].parent = armature.data.edit_bones[name_prefix + root_bone_name]
     bpy.ops.object.mode_set(mode='OBJECT')
