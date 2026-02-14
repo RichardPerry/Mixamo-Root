@@ -2,7 +2,7 @@
 
 '''
     Copyright (C) 2026  Richard Perry
-    Copyright (C) Average Godot Enjoyewo tor (Johngoss725)
+    Copyright (C) Average Godot Enjoyer (Johngoss725)
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
