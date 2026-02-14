@@ -38,21 +38,22 @@ def fixBones(remove_prefix=False, name_prefix="mixamorig:"):
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
     bpy.context.object.show_in_front = True
 
-    if remove_prefix:
-        for rig in bpy.context.selected_objects:
-            if rig.type == 'ARMATURE':
-                for mesh in rig.children:
-                    for vg in mesh.vertex_groups:
-                        new_name = vg.name
-                        new_name = new_name.replace(name_prefix,"")
-                        rig.pose.bones[vg.name].name = new_name
-                        vg.name = new_name
-                for bone in rig.pose.bones:
-                    bone.name = bone.name.replace(name_prefix,"")
-        for action in bpy.data.actions:
-            fc = action.fcurves
-            for f in fc:
-                f.data_path = f.data_path.replace(name_prefix,"")
+
+def removePrefix(name_prefix="mixamorig:"):
+    for rig in bpy.context.selected_objects:
+        if rig.type == 'ARMATURE':
+            for mesh in rig.children:
+                for vg in mesh.vertex_groups:
+                    new_name = vg.name
+                    new_name = new_name.replace(name_prefix,"")
+                    rig.pose.bones[vg.name].name = new_name
+                    vg.name = new_name
+            for bone in rig.pose.bones:
+                bone.name = bone.name.replace(name_prefix,"")
+    for action in bpy.data.actions:
+        fc = action.fcurves
+        for f in fc:
+            f.data_path = f.data_path.replace(name_prefix,"")
         
 def scaleAll():
     bpy.ops.object.mode_set(mode='OBJECT')
@@ -319,9 +320,11 @@ def add_root_bone(root_bone_name="Root", hip_bone_name="mixamorig:Hips", remove_
     armature.data.edit_bones[hip_bone_name].parent = armature.data.edit_bones[name_prefix + root_bone_name]
     bpy.ops.object.mode_set(mode='OBJECT')
 
-    fixBones(remove_prefix=remove_prefix, name_prefix=name_prefix)
+    fixBones()
     scaleAll()
     copyHips(root_bone_name=root_bone_name, hip_bone_name=hip_bone_name, name_prefix=name_prefix)
+    if remove_prefix:
+        removePrefix(name_prefix)
 
 def add_root_bone_nla(root_bone_name="Root", hip_bone_name="mixamorig:Hips", name_prefix="mixamorig:"):#remove_prefix=False, name_prefix="mixamorig:"):
     armature = bpy.context.selected_objects[0]
